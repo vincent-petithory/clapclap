@@ -22,7 +22,7 @@ func main() {
 	}
 	defer stream.Free()
 
-	rmsCh := make(chan float64)
+	dBCh := make(chan float64)
 	go func() {
 		const bufsize = 1 << 10
 		for {
@@ -35,34 +35,34 @@ func main() {
 				v := float64(int64(data[i]) + int64(data[i+1])<<8)
 				acc += v * v
 			}
-			rmsCh <- acc / bufsize
+			rms := acc / bufsize
+			dBCh <- -20 * math.Log10(1<<16-math.Sqrt(rms))
 		}
-		close(rmsCh)
+		close(dBCh)
 	}()
 
 	avgCh := make(chan float64)
 	tick := time.Tick(frame)
 	go func() {
 		var (
-			n      int
-			rmsbuf []float64
+			n     int
+			dBbuf []float64
 		)
 
 		for {
 			select {
-			case rms := <-rmsCh:
+			case dB := <-dBCh:
 				n++
-				rmsbuf = append(rmsbuf, rms)
+				dBbuf = append(dBbuf, dB)
 			case <-tick:
 				var avg float64
 				nf := float64(n)
-				for _, rms := range rmsbuf {
-					avg += rms / nf
+				for _, dB := range dBbuf {
+					avg += dB / nf
 				}
-				rmsbuf = []float64{}
+				dBbuf = []float64{}
 				n = 0
-				dB := -20 * math.Log10(1<<16-math.Sqrt(avg))
-				avgCh <- dB
+				avgCh <- avg
 			}
 		}
 	}()
