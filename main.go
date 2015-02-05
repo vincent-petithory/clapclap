@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -10,6 +11,10 @@ import (
 )
 
 func main() {
+	var frame time.Duration
+	flag.DurationVar(&frame, "frame", time.Second, "time frame to capture samples")
+	flag.Parse()
+
 	ss := pulse.SampleSpec{pulse.SAMPLE_S16LE, 44100, 2}
 	stream, err := pulse.Capture("clapclap", "clap stream", &ss)
 	if err != nil {
@@ -36,7 +41,6 @@ func main() {
 	}()
 
 	avgCh := make(chan float64)
-	const frame = time.Millisecond * 1000
 	tick := time.Tick(frame)
 	go func() {
 		var (
