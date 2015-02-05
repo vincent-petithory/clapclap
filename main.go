@@ -6,12 +6,12 @@ import (
 	"math"
 	"time"
 
-	pulsesimple "github.com/mesilliac/pulse-simple"
+	"github.com/mesilliac/pulse-simple"
 )
 
 func main() {
-	ss := pulsesimple.SampleSpec{pulsesimple.SAMPLE_S16LE, 44100, 2}
-	stream, err := pulsesimple.Capture("clapclap", "clap stream", &ss)
+	ss := pulse.SampleSpec{pulse.SAMPLE_S16LE, 44100, 2}
+	stream, err := pulse.Capture("clapclap", "clap stream", &ss)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,25 +40,25 @@ func main() {
 	tick := time.Tick(frame)
 	go func() {
 		var (
-			n     int
-			dBbuf []float64
+			n      int
+			rmsbuf []float64
 		)
 
 		for {
 			select {
 			case rms := <-rmsCh:
 				n++
-				dB := -20 * math.Log10(1<<16-math.Sqrt(rms))
-				dBbuf = append(dBbuf, dB)
+				rmsbuf = append(rmsbuf, rms)
 			case <-tick:
 				var avg float64
 				nf := float64(n)
-				for _, dB := range dBbuf {
-					avg += dB / nf
+				for _, rms := range rmsbuf {
+					avg += rms / nf
 				}
-				dBbuf = []float64{}
+				rmsbuf = []float64{}
 				n = 0
-				avgCh <- avg
+				dB := -20 * math.Log10(1<<16-math.Sqrt(avg))
+				avgCh <- dB
 			}
 		}
 	}()
